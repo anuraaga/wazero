@@ -25,6 +25,7 @@ type engine struct {
 	compiledFunctions                map[*wasm.FunctionInstance]*compiledFunction // guarded by mutex.
 	cachedCompiledFunctionsPerModule map[*wasm.Module][]*compiledFunction         // guarded by mutex.
 	mux                              sync.RWMutex
+	interceptor
 }
 
 func NewEngine(enabledFeatures wasm.Features) wasm.Engine {
@@ -169,6 +170,7 @@ type compiledFunction struct {
 	source       *wasm.FunctionInstance
 	body         []*interpreterOp
 	hostFn       *reflect.Value
+	debugName    string
 }
 
 func (c *compiledFunction) clone(me *moduleEngine, newSourceInstance *wasm.FunctionInstance) *compiledFunction {
@@ -177,6 +179,7 @@ func (c *compiledFunction) clone(me *moduleEngine, newSourceInstance *wasm.Funct
 		source:       newSourceInstance,
 		body:         c.body,
 		hostFn:       c.hostFn,
+		debugName:    c.debugName,
 	}
 }
 
@@ -228,7 +231,7 @@ func (e *engine) NewModuleEngine(name string, source *wasm.Module, importedFunct
 					return nil, fmt.Errorf("function[%d/%d] failed to convert wazeroir operations: %w", i, len(moduleFunctions)-1, err)
 				}
 			} else {
-				compiled = &compiledFunction{hostFn: f.GoFunc, source: f}
+				compiled = &compiledFunction{hostFn: f.GoFunc, source: f, debugName: f.DebugName}
 			}
 			compiled.moduleEngine = me
 			me.compiledFunctions = append(me.compiledFunctions, compiled)
@@ -259,7 +262,7 @@ func (me *moduleEngine) Release() error {
 // lowerIROps lowers the wazeroir operations to engine friendly struct.
 func (e *engine) lowerIROps(f *wasm.FunctionInstance,
 	ops []wazeroir.Operation) (*compiledFunction, error) {
-	ret := &compiledFunction{source: f}
+	ret := &compiledFunction{source: f, debugName: f.DebugName}
 	labelAddress := map[string]uint64{}
 	onLabelAddressResolved := map[string][]func(addr uint64){}
 	for _, original := range ops {
@@ -576,6 +579,7 @@ func (me *moduleEngine) Call(m *wasm.ModuleContext, f *wasm.FunctionInstance, pa
 	for _, param := range params {
 		ce.push(param)
 	}
+
 	if f.Kind == wasm.FunctionKindWasm {
 		ce.callNativeFunc(m, compiled)
 	} else {
@@ -591,6 +595,8 @@ func (me *moduleEngine) Call(m *wasm.ModuleContext, f *wasm.FunctionInstance, pa
 func (ce *callEngine) callHostFunc(ctx *wasm.ModuleContext, f *compiledFunction) {
 	tp := f.hostFn.Type()
 	in := make([]reflect.Value, tp.NumIn())
+
+	fmt.Println(f.debugName)
 
 	wasmParamOffset := 0
 	if f.source.Kind != wasm.FunctionKindGoNoContext {

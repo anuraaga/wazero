@@ -24,7 +24,7 @@ var catWasm []byte
 // This is a basic introduction to the WebAssembly System Interface (WASI).
 // See https://github.com/WebAssembly/WASI
 func main() {
-	r := wazero.NewRuntime()
+	r := wazero.NewRuntimeWithConfig(wazero.NewRuntimeConfigInterpreter())
 
 	// Since wazero uses fs.FS, we can use standard libraries to do things like trim the leading path.
 	rooted, err := fs.Sub(catFS, "testdata")

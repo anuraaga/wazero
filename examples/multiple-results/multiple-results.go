@@ -25,7 +25,7 @@ import (
 // See https://github.com/WebAssembly/spec/blob/main/proposals/multi-value/Overview.md
 func main() {
 	// Create a portable WebAssembly Runtime.
-	runtime := wazero.NewRuntime()
+	runtime := wazero.NewRuntimeWithConfig(wazero.NewRuntimeConfigInterpreter())
 
 	// Add a module that uses offset parameters for multiple results, with functions defined in WebAssembly.
 	wasm, err := resultOffsetWasmFunctions(runtime)
