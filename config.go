@@ -22,6 +22,13 @@ type RuntimeConfig struct {
 	memoryMaxPages  uint32
 }
 
+// FunctionInvoker invokes an intercepted function from within a FunctionInterceptor
+type FunctionInvoker func(ctx context.Context)
+
+// FunctionInterceptor is invoked for any host function invocation.
+// TODO(anuraaga): Document how to use invoker, notably what happens if it's not invoked.
+type FunctionInterceptor func(ctx context.Context, name string, invoker FunctionInvoker)
+
 // engineLessConfig helps avoid copy/pasting the wrong defaults.
 var engineLessConfig = &RuntimeConfig{
 	enabledFeatures: wasm.Features20191205,
@@ -137,6 +144,18 @@ func (c *RuntimeConfig) WithFeatureSignExtensionOps(enabled bool) *RuntimeConfig
 func (c *RuntimeConfig) WithFeatureMultiValue(enabled bool) *RuntimeConfig {
 	ret := c.clone()
 	ret.enabledFeatures = ret.enabledFeatures.Set(wasm.FeatureMultiValue, enabled)
+	return ret
+}
+
+func (c *RuntimeConfig) WithInterceptor(interceptor FunctionInterceptor) *RuntimeConfig {
+	ret := c.clone()
+	ret.newEngine = func(features wasm.Features) wasm.Engine {
+		return interpreter.NewEngineWithInterceptor(features, func(ctx context.Context, name string, invoker interpreter.FunctionInvoker) {
+			interceptor(ctx, name, func(ctx context.Context) {
+				invoker(ctx)
+			})
+		})
+	}
 	return ret
 }
 

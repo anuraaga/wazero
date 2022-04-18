@@ -1,6 +1,7 @@
 package interpreter
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"math"
@@ -19,13 +20,18 @@ import (
 
 var callStackCeiling = buildoptions.CallStackCeiling
 
+type FunctionInvoker func(ctx context.Context)
+type FunctionInterceptor func(ctx context.Context, name string, invoker FunctionInvoker)
+
+var goContextType = reflect.TypeOf((*context.Context)(nil)).Elem()
+
 // engine is an interpreter implementation of wasm.Engine
 type engine struct {
 	enabledFeatures                  wasm.Features
 	compiledFunctions                map[*wasm.FunctionInstance]*compiledFunction // guarded by mutex.
 	cachedCompiledFunctionsPerModule map[*wasm.Module][]*compiledFunction         // guarded by mutex.
 	mux                              sync.RWMutex
-	interceptor
+	interceptor                      FunctionInterceptor
 }
 
 func NewEngine(enabledFeatures wasm.Features) wasm.Engine {
@@ -33,6 +39,15 @@ func NewEngine(enabledFeatures wasm.Features) wasm.Engine {
 		enabledFeatures:                  enabledFeatures,
 		compiledFunctions:                make(map[*wasm.FunctionInstance]*compiledFunction),
 		cachedCompiledFunctionsPerModule: map[*wasm.Module][]*compiledFunction{},
+	}
+}
+
+func NewEngineWithInterceptor(enabledFeatures wasm.Features, interceptor FunctionInterceptor) wasm.Engine {
+	return &engine{
+		enabledFeatures:                  enabledFeatures,
+		compiledFunctions:                make(map[*wasm.FunctionInstance]*compiledFunction),
+		cachedCompiledFunctionsPerModule: map[*wasm.Module][]*compiledFunction{},
+		interceptor:                      interceptor,
 	}
 }
 
@@ -102,10 +117,13 @@ type callEngine struct {
 
 	// frames are the function call stack.
 	frames []*callFrame
+
+	// parentEngine holds *moduleEngine from which this call engine is created from.
+	parentEngine *moduleEngine
 }
 
 func (me *moduleEngine) newCallEngine() *callEngine {
-	return &callEngine{}
+	return &callEngine{parentEngine: me}
 }
 
 func (ce *callEngine) push(v uint64) {
@@ -596,8 +614,6 @@ func (ce *callEngine) callHostFunc(ctx *wasm.ModuleContext, f *compiledFunction)
 	tp := f.hostFn.Type()
 	in := make([]reflect.Value, tp.NumIn())
 
-	fmt.Println(f.debugName)
-
 	wasmParamOffset := 0
 	if f.source.Kind != wasm.FunctionKindGoNoContext {
 		wasmParamOffset = 1
@@ -624,25 +640,53 @@ func (ce *callEngine) callHostFunc(ctx *wasm.ModuleContext, f *compiledFunction)
 		ctx = ctx.WithMemory(ce.frames[len(ce.frames)-1].f.source.Module.Memory)
 	}
 
-	// Handle any special parameter zero
-	if val := wasm.GetHostFunctionCallContextValue(f.source.Kind, ctx); val != nil {
-		in[0] = *val
-	}
-
 	frame := &callFrame{f: f}
 	ce.pushFrame(frame)
-	for _, ret := range f.hostFn.Call(in) {
-		switch ret.Kind() {
-		case reflect.Float32:
-			ce.push(uint64(math.Float32bits(float32(ret.Float()))))
-		case reflect.Float64:
-			ce.push(math.Float64bits(ret.Float()))
-		case reflect.Uint32, reflect.Uint64:
-			ce.push(ret.Uint())
-		case reflect.Int32, reflect.Int64:
-			ce.push(uint64(ret.Int()))
-		default:
-			panic("invalid return type")
+
+	interceptor := ce.parentEngine.parentEngine.interceptor
+	if interceptor != nil {
+		interceptor(ctx.Context(), f.debugName, func(goCtx context.Context) {
+			// Handle any special parameter zero
+			if f.source.Kind == wasm.FunctionKindGoContext {
+				in[0] = reflect.New(goContextType).Elem()
+				in[0].Set(reflect.ValueOf(goCtx))
+			} else if val := wasm.GetHostFunctionCallContextValue(f.source.Kind, ctx); val != nil {
+				in[0] = *val
+			}
+
+			for _, ret := range f.hostFn.Call(in) {
+				switch ret.Kind() {
+				case reflect.Float32:
+					ce.push(uint64(math.Float32bits(float32(ret.Float()))))
+				case reflect.Float64:
+					ce.push(math.Float64bits(ret.Float()))
+				case reflect.Uint32, reflect.Uint64:
+					ce.push(ret.Uint())
+				case reflect.Int32, reflect.Int64:
+					ce.push(uint64(ret.Int()))
+				default:
+					panic("invalid return type")
+				}
+			}
+		})
+	} else {
+		// Handle any special parameter zero
+		if val := wasm.GetHostFunctionCallContextValue(f.source.Kind, ctx); val != nil {
+			in[0] = *val
+		}
+		for _, ret := range f.hostFn.Call(in) {
+			switch ret.Kind() {
+			case reflect.Float32:
+				ce.push(uint64(math.Float32bits(float32(ret.Float()))))
+			case reflect.Float64:
+				ce.push(math.Float64bits(ret.Float()))
+			case reflect.Uint32, reflect.Uint64:
+				ce.push(ret.Uint())
+			case reflect.Int32, reflect.Int64:
+				ce.push(uint64(ret.Int()))
+			default:
+				panic("invalid return type")
+			}
 		}
 	}
 	ce.popFrame()
