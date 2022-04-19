@@ -281,3 +281,9 @@ func EncodeF64(input float64) uint64 {
 func DecodeF64(input uint64) float64 {
 	return math.Float64frombits(input)
 }
+
+// FunctionListener can be registered to be notified any time the runtime invokes a function.
+type FunctionListener interface {
+	Before(ctx context.Context, name string, function Function) context.Context
+	After(ctx context.Context, name string, function Function)
+}

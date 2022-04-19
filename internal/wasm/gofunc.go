@@ -32,12 +32,12 @@ var goContextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 // getGoFuncCallContextValue returns a reflect.Value for a context param[0], or nil if there isn't one.
-func getGoFuncCallContextValue(fk FunctionKind, ctx *CallContext) *reflect.Value {
+func getGoFuncCallContextValue(fk FunctionKind, ctx *CallContext, goCtx context.Context) *reflect.Value {
 	switch fk {
 	case FunctionKindGoNoContext: // no special param zero
 	case FunctionKindGoContext:
 		val := reflect.New(goContextType).Elem()
-		val.Set(reflect.ValueOf(ctx.Context()))
+		val.Set(reflect.ValueOf(goCtx))
 		return &val
 	case FunctionKindGoModule:
 		val := reflect.New(moduleType).Elem()
@@ -82,7 +82,7 @@ func PopValues(count int, popper func() uint64) []uint64 {
 // * callCtx is passed to the host function as a first argument.
 //
 // Note: ctx must use the caller's memory, which might be different from the defining module on an imported function.
-func CallGoFunc(callCtx *CallContext, f *FunctionInstance, params []uint64) []uint64 {
+func CallGoFunc(callCtx *CallContext, goCtx context.Context, f *FunctionInstance, params []uint64) []uint64 {
 	tp := f.GoFunc.Type()
 
 	var in []reflect.Value
@@ -111,7 +111,7 @@ func CallGoFunc(callCtx *CallContext, f *FunctionInstance, params []uint64) []ui
 		}
 
 		// Handle any special parameter zero
-		if val := getGoFuncCallContextValue(f.Kind, callCtx); val != nil {
+		if val := getGoFuncCallContextValue(f.Kind, callCtx, goCtx); val != nil {
 			in[0] = *val
 		}
 	}

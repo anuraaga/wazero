@@ -1,6 +1,7 @@
 package jit
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"runtime"
@@ -548,7 +549,7 @@ func (me *moduleEngine) Call(m *wasm.CallContext, f *wasm.FunctionInstance, para
 		ce.execWasmFunction(m, compiled)
 		results = wasm.PopValues(len(f.Type.Results), ce.popValue)
 	} else {
-		results = wasm.CallGoFunc(m, compiled.source, params)
+		results = wasm.CallGoFunc(m, context.Background(), compiled.source, params)
 	}
 	return
 }
@@ -677,6 +678,7 @@ jitentry:
 			results := wasm.CallGoFunc(
 				// Use the caller's memory, which might be different from the defining module on an imported function.
 				ctx.WithMemory(callerFunction.source.Module.Memory),
+				context.Background(),
 				calleeHostFunction.source,
 				params,
 			)

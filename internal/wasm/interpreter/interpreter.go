@@ -1,6 +1,7 @@
 package interpreter
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"math"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/internal/buildoptions"
 	"github.com/tetratelabs/wazero/internal/moremath"
 	"github.com/tetratelabs/wazero/internal/wasm"
@@ -21,9 +23,10 @@ var callStackCeiling = buildoptions.CallStackCeiling
 
 // engine is an interpreter implementation of wasm.Engine
 type engine struct {
-	enabledFeatures wasm.Features
-	codes           map[wasm.ModuleID][]*code // guarded by mutex.
-	mux             sync.RWMutex
+	enabledFeatures   wasm.Features
+	codes             map[wasm.ModuleID][]*code // guarded by mutex.
+	mux               sync.RWMutex
+	functionListeners []api.FunctionListener
 }
 
 func NewEngine(enabledFeatures wasm.Features) wasm.Engine {
@@ -80,10 +83,13 @@ type callEngine struct {
 
 	// frames are the function call stack.
 	frames []*callFrame
+
+	// functionListeners holds the listeners to invoke when this callEngine invokes functions.
+	functionListeners []api.FunctionListener
 }
 
 func (me *moduleEngine) newCallEngine() *callEngine {
-	return &callEngine{}
+	return &callEngine{functionListeners: me.parentEngine.functionListeners}
 }
 
 func (ce *callEngine) pushValue(v uint64) {
@@ -142,6 +148,8 @@ type callFrame struct {
 	pc uint64
 	// f is the compiled function used in this function frame.
 	f *function
+	// ctx is the context for this function frame.
+	ctx context.Context
 }
 
 type code struct {
@@ -563,19 +571,53 @@ func (me *moduleEngine) Call(m *wasm.CallContext, f *wasm.FunctionInstance, para
 }
 
 func (ce *callEngine) callGoFunc(ctx *wasm.CallContext, f *function, params []uint64) (results []uint64) {
+	var goCtx context.Context
 	if len(ce.frames) > 0 {
+		caller := ce.frames[len(ce.frames)-1]
 		// Use the caller's memory, which might be different from the defining module on an imported function.
-		ctx = ctx.WithMemory(ce.frames[len(ce.frames)-1].f.source.Module.Memory)
+		ctx = ctx.WithMemory(caller.f.source.Module.Memory)
+		goCtx = caller.ctx
 	}
-	frame := &callFrame{f: f}
+	if goCtx == nil {
+		goCtx = context.Background()
+	}
+
+	listeners := ce.functionListeners
+
+	for _, l := range listeners {
+		goCtx = l.Before(goCtx, f.source.DebugName, f.source)
+	}
+
+	frame := &callFrame{f: f, ctx: goCtx}
 	ce.pushFrame(frame)
-	results = wasm.CallGoFunc(ctx, f.source, params)
+	results = wasm.CallGoFunc(ctx, goCtx, f.source, params)
 	ce.popFrame()
+
+	for i := len(listeners) - 1; i >= 0; i-- {
+		// TODO(anuraaga): OK not to unwrap context? Would require our own context stack...
+		listeners[i].After(goCtx, f.source.DebugName, f.source)
+	}
+
 	return
 }
 
 func (ce *callEngine) callNativeFunc(ctx *wasm.CallContext, f *function) {
-	frame := &callFrame{f: f}
+	var goCtx context.Context
+	if len(ce.frames) > 0 {
+		caller := ce.frames[len(ce.frames)-1]
+		goCtx = caller.ctx
+	}
+	if goCtx == nil {
+		goCtx = context.Background()
+	}
+
+	listeners := ce.functionListeners
+
+	for _, l := range listeners {
+		goCtx = l.Before(goCtx, f.source.DebugName, f.source)
+	}
+
+	frame := &callFrame{f: f, ctx: goCtx}
 	moduleInst := f.source.Module
 	memoryInst := moduleInst.Memory
 	globals := moduleInst.Globals
@@ -1553,6 +1595,11 @@ func (ce *callEngine) callNativeFunc(ctx *wasm.CallContext, f *function) {
 		}
 	}
 	ce.popFrame()
+
+	for i := len(listeners) - 1; i >= 0; i-- {
+		// TODO(anuraaga): OK not to unwrap context? Would require our own context stack...
+		listeners[i].After(goCtx, f.source.DebugName, f.source)
+	}
 }
 
 func (ce *callEngine) callGoFuncWithStack(ctx *wasm.CallContext, f *function) {

@@ -342,7 +342,7 @@ func TestCallGoFunc(t *testing.T) {
 			fk, _, err := getFunctionType(&goFunc, FeaturesFinished)
 			require.NoError(t, err)
 
-			results := CallGoFunc(callCtx, &FunctionInstance{Kind: fk, GoFunc: &goFunc}, tc.inputParams)
+			results := CallGoFunc(callCtx, context.Background(), &FunctionInstance{Kind: fk, GoFunc: &goFunc}, tc.inputParams)
 			require.Equal(t, tc.expectedResults, results)
 		})
 	}
