@@ -161,7 +161,7 @@ type (
 		// Set when making function call to this function frame.
 		function *function
 		// _ is a necessary padding to make the size of callFrame struct a power of 2.
-		_ [8]byte
+		ctx *context.Context
 	}
 
 	// Function corresponds to function instance in Wasm, and is created from `code`.
@@ -650,8 +650,9 @@ const (
 )
 
 func (ce *callEngine) execWasmFunction(ctx *wasm.CallContext, f *function) {
+	goCtx := context.Background()
 	// Push the initial callframe.
-	ce.callFrameStack[0] = callFrame{returnAddress: f.codeInitialAddress, function: f}
+	ce.callFrameStack[0] = callFrame{returnAddress: f.codeInitialAddress, function: f, ctx: &goCtx}
 	ce.globalContext.callFrameStackPointer++
 
 jitentry:
