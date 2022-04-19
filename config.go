@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/tetratelabs/wazero/api"
 	"io"
 	"io/fs"
 	"math"
@@ -395,6 +396,14 @@ func (c *ModuleConfig) WithFS(fs fs.FS) *ModuleConfig {
 func (c *ModuleConfig) WithWorkDirFS(fs fs.FS) *ModuleConfig {
 	c.setFS(".", fs)
 	return c
+}
+
+func (c *RuntimeConfig) WithFunctionListener(listener api.FunctionListener) *RuntimeConfig {
+	ret := c.clone()
+	ret.newEngine = func(features wasm.Features) wasm.Engine {
+		return interpreter.NewEngineWithFunctionListener(features, listener)
+	}
+	return ret
 }
 
 // setFS maps a path to a file-system. This is only used for base paths: "/" and ".".

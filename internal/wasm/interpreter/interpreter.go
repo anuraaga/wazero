@@ -36,6 +36,14 @@ func NewEngine(enabledFeatures wasm.Features) wasm.Engine {
 	}
 }
 
+func NewEngineWithFunctionListener(enabledFeatures wasm.Features, listener api.FunctionListener) wasm.Engine {
+	return &engine{
+		enabledFeatures:   enabledFeatures,
+		codes:             map[wasm.ModuleID][]*code{},
+		functionListeners: []api.FunctionListener{listener},
+	}
+}
+
 // DeleteCompiledModule implements the same method as documented on wasm.Engine.
 func (e *engine) DeleteCompiledModule(m *wasm.Module) {
 	e.deleteCodes(m)
