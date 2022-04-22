@@ -17,7 +17,7 @@ import (
 var catFS embed.FS
 
 // catWasm was compiled the TinyGo source testdata/cat.go
-//go:embed testdata/cat.wasm
+//go:embed testdata/lib.wasm
 var catWasm []byte
 
 // main writes an input file to stdout, just like `cat`.

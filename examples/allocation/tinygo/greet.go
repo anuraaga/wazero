@@ -13,7 +13,7 @@ import (
 )
 
 // greetWasm was compiled using `tinygo build -o greet.wasm -scheduler=none --no-debug -target=wasi greet.go`
-//go:embed testdata/greet.wasm
+//go:embed testdata/lib.wasm
 var greetWasm []byte
 
 // main shows how to interact with a WebAssembly function that was compiled

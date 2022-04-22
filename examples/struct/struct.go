@@ -12,7 +12,7 @@ import (
 )
 
 // structWasm was compiled using `tinygo build -o struct.wasm -scheduler=none --no-debug -target=wasi struct.go`
-//go:embed testdata/struct.wasm
+//go:embed testdata/lib.wasm
 var structWasm []byte
 
 type bear struct {
