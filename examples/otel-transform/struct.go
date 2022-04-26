@@ -4,21 +4,17 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/wasi"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"log"
 	"unsafe"
+
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/wasi"
 )
 
 // structWasm was compiled using `tinygo build -o struct.wasm -scheduler=none --no-debug -target=wasi struct.go`
 //go:embed testdata/lib.wasm
 var structWasm []byte
-
-type bear struct {
-	name     string
-	greeting string
-}
 
 // See README.md for a full description.
 func main() {
@@ -26,12 +22,33 @@ func main() {
 	ctx := context.Background()
 
 	// Create a new WebAssembly Runtime.
-	r := wazero.NewRuntime()
+	r := wazero.NewRuntimeWithConfig(wazero.NewRuntimeConfigInterpreter())
 
 	// Instantiate a module named "env" that exports operations on a bear.
-	env, err := r.NewModuleBuilder("env").
-		ExportFunction("setName", setName).
-		ExportFunction("getName", getName).
+	env, err := r.NewModuleBuilder("oteltransform").
+		ExportFunction("log", _log).
+		ExportFunction("Map_Len", map_Len).
+		ExportFunction("Map_Range", map_Range).
+		ExportFunction("Map_Range_Done", map_Range_Done).
+		ExportFunction("Map_Range_Key", map_Range_Key).
+		ExportFunction("Map_Range_Value", map_Range_Value).
+		ExportFunction("Map_Range_Advance", map_Range_Advance).
+		ExportFunction("Map_RemoveIf", map_RemoveIf).
+		ExportFunction("Map_RemoveIf_AddKey", map_RemoveIf_AddKey).
+		ExportFunction("Map_RemoveIf_Finish", map_RemoveIf_Finish).
+		ExportFunction("newFunctionDefinition", newFunctionDefinition).
+		ExportFunction("functionDefinition_setName", functionDefinition_setName).
+		ExportFunction("functionDefinition_clearParams", functionDefinition_clearParams).
+		ExportFunction("functionDefinition_addParam", functionDefinition_addParam).
+		ExportFunction("functionDefinition_setIdx", functionDefinition_setIdx).
+		ExportFunction("functionDefinition_register", functionDefinition_register).
+		ExportFunction("resolvedParam_done", resolvedParam_done).
+		ExportFunction("resolvedParam_advance", resolvedParam_advance).
+		ExportFunction("resolvedParam_getType", resolvedParam_getType).
+		ExportFunction("resolvedParam_getPtr", resolvedParam_getPtr).
+		ExportFunction("getSetter_Get", getSetter_Get).
+		ExportFunction("StringSlice_Len", stringSlice_len).
+		ExportFunction("StringSlice_Get", stringSlice_get).
 		Instantiate(ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -53,49 +70,75 @@ func main() {
 	}
 	defer mod.Close()
 
-	// Get a references to functions we'll use in this example.
-	hello := mod.ExportedFunction("hello")
+	invoke_factory := mod.ExportedFunction("invoke_factory")
+	invoke_function := mod.ExportedFunction("invoke_function")
 
-	b := &bear{
-		name:     "Yogi",
-		greeting: "Yabba Dabba Doo!",
+	gs := &testGetSetter{}
+	keys := &[]string{"bear.name", "bear.greeting"}
+	params := []resolvedParam{
+		{typ: "GetSetter", ptr: toPtr(unsafe.Pointer(gs))},
+		{typ: "[]string", ptr: toPtr(unsafe.Pointer(keys))},
+	}
+	paramsItr := &resolvedParamIterator{
+		params: params,
+		pos:    0,
 	}
 
-	_, err = hello.Call(ctx, b.ptr())
+	res, err := invoke_factory.Call(ctx, uint64(0), toPtr(unsafe.Pointer(paramsItr)))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	m := pcommon.NewMap()
+	m.InsertString("bear.name", "Yogi")
+	m.InsertString("bear.greeting", "Yabba Dabba Doo!")
+	m.InsertString("shark.name", "Jaws")
+	m.InsertString("shark.greeting", "Chomp!")
+	transformCtx := &testTransformContext{
+		m: m,
+	}
+
+	_, err = invoke_function.Call(ctx, res[0], toPtr(unsafe.Pointer(transformCtx)))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Name should have been updated in wasm
-	fmt.Println("name:" + b.name)
-	// Make sure other fields are still there too
-	fmt.Println("greeting:" + b.greeting)
+	m.Range(func(key string, val pcommon.Value) bool {
+		fmt.Printf("%v:%v\n", key, val.AsString())
+		return true
+	})
 }
 
-func setName(m api.Module, bearPtr uint64, nameOff uint32, nameLen uint32) {
-	buf, ok := m.Memory().Read(nameOff, nameLen)
-	if !ok {
-		log.Fatalf("Memory.Read(%d, %d) out of range", nameOff, nameLen)
-	}
-	b := bearFromPtr(bearPtr)
-	b.name = string(buf)
+func toPtr(val unsafe.Pointer) uint64 {
+	return uint64(uintptr(val))
 }
 
-func getName(m api.Module, bearPtr uint64, bufOff uint32) uint32 {
-	b := bearFromPtr(bearPtr)
-
-	if !m.Memory().Write(bufOff, []byte(b.name)) {
-		log.Fatalf("Memory.Write(%d, %d) out of range of memory size %d",
-			bufOff, len(b.name), m.Memory().Size())
-	}
-
-	return uint32(len(b.name))
+type testTransformContext struct {
+	m pcommon.Map
 }
 
-func bearFromPtr(bearPtr uint64) *bear {
-	return (*bear)(unsafe.Pointer(uintptr(bearPtr)))
+func (t *testTransformContext) GetItem() interface{} {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (b *bear) ptr() uint64 {
-	return uint64(uintptr(unsafe.Pointer(b)))
+func (t *testTransformContext) GetInstrumentationScope() pcommon.InstrumentationScope {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *testTransformContext) GetResource() pcommon.Resource {
+	//TODO implement me
+	panic("implement me")
+}
+
+type testGetSetter struct {
+}
+
+func (g *testGetSetter) Get(ctx TransformContext) interface{} {
+	return &ctx.(*testTransformContext).m
+}
+
+func (g *testGetSetter) Set(ctx TransformContext, val interface{}) {
 }
