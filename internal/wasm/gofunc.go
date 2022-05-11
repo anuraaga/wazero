@@ -3,10 +3,9 @@ package wasm
 import (
 	"context"
 	"fmt"
+	"github.com/tetratelabs/wazero/api"
 	"math"
 	"reflect"
-
-	"github.com/tetratelabs/wazero/api"
 )
 
 // FunctionKind identifies the type of function that can be called.
@@ -101,7 +100,7 @@ func CallGoFunc(ctx context.Context, callCtx *CallContext, f *FunctionInstance, 
 				val.SetFloat(float64(math.Float32frombits(uint32(raw))))
 			case reflect.Float64:
 				val.SetFloat(math.Float64frombits(raw))
-			case reflect.Uint32, reflect.Uint64:
+			case reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 				val.SetUint(raw)
 			case reflect.Int32, reflect.Int64:
 				val.SetInt(int64(raw))
