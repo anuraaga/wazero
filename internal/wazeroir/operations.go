@@ -420,6 +420,20 @@ func (o OperationKind) String() (ret string) {
 		ret = "V128ITruncSatFromF"
 	case OperationKindBuiltinFunctionCheckExitCode:
 		ret = "BuiltinFunctionCheckExitCode"
+	case OperationKindAtomicMemoryWait:
+		ret = "OperationKindAtomicMemoryWait"
+	case OperationKindAtomicMemoryNotify:
+		ret = "OperationKindAtomicMemoryNotify"
+	case OperationKindAtomicLoad:
+		ret = "OperationKindAtomicLoad"
+	case OperationKindAtomicLoad8U:
+		ret = "OperationKindAtomicLoad8U"
+	case OperationKindAtomicStore:
+		ret = "OperationKindAtomicStore"
+	case OperationKindAtomicRMWXchg:
+		ret = "OperationKindAtomicRMWXchg"
+	case OperationKindAtomicRMWCmpxchg:
+		ret = "OperationKindAtomicRMWCmpxchg"
 	default:
 		panic(fmt.Errorf("unknown operation %d", o))
 	}
@@ -709,6 +723,23 @@ const (
 
 	// OperationKindBuiltinFunctionCheckExitCode is the kind for OperationBuiltinFunctionCheckExitCode.
 	OperationKindBuiltinFunctionCheckExitCode
+
+	// OperationKindAtomicMemoryWait is the kind for OperationAtomicMemoryWait.
+	OperationKindAtomicMemoryWait
+	// OperationKindAtomicMemoryNotify is the kind for OperationAtomicMemoryNotify.
+	OperationKindAtomicMemoryNotify
+	// OperationKindAtomicFence is the kind for OperationAtomicFence.
+	OperationKindAtomicFence
+	// OperationKindAtomicLoad is the kind for OperationAtomicLoad.
+	OperationKindAtomicLoad
+	// OperationKindAtomicLoad8U is the kind for OperationAtomicLoad8U.
+	OperationKindAtomicLoad8U
+	// OperationKindAtomicStore is the kind for OperationAtomicStore.
+	OperationKindAtomicStore
+	// OperationKindAtomicRMWXchg is the kind for OperationAtomicRMWXchg.
+	OperationKindAtomicRMWXchg
+	// OperationKindAtomicRMWCmpxchg is the kind for OperationAtomicRMWCmpxchg.
+	OperationKindAtomicRMWCmpxchg
 
 	// operationKindEnd is always placed at the bottom of this iota definition to be used in the test.
 	operationKindEnd
@@ -2834,4 +2865,120 @@ type OperationV128ITruncSatFromF struct {
 // Kind implements Operation.Kind.
 func (OperationV128ITruncSatFromF) Kind() OperationKind {
 	return OperationKindV128ITruncSatFromF
+}
+
+// OperationAtomicMemoryWait implements Operation.
+//
+// This corresponds to
+//
+//	wasm.OpcodeAtomicWait32Name wasm.OpcodeAtomicWait64Name
+type OperationAtomicMemoryWait struct {
+	Type UnsignedType
+	Arg  MemoryArg
+}
+
+// Kind implements Operation.Kind.
+func (OperationAtomicMemoryWait) Kind() OperationKind {
+	return OperationKindAtomicMemoryWait
+}
+
+// OperationAtomicMemoryNotify implements Operation.
+//
+// This corresponds to
+//
+//	wasm.OpcodeAtomicNotifyName
+type OperationAtomicMemoryNotify struct {
+	Arg MemoryArg
+}
+
+// Kind implements Operation.Kind.
+func (OperationAtomicMemoryNotify) Kind() OperationKind {
+	return OperationKindAtomicMemoryNotify
+}
+
+// OperationAtomicFence implements Operation.
+//
+// This corresponds to
+//
+//	wasm.OpcodeAtomicFenceName
+type OperationAtomicFence struct{}
+
+// Kind implements Operation.Kind.
+func (OperationAtomicFence) Kind() OperationKind {
+	return OperationKindAtomicFence
+}
+
+// OperationAtomicLoad implements Operation.
+//
+// This corresponds to
+//
+//	wasm.OpcodeAtomicI32LoadName wasm.OpcodeAtomicI64LoadName
+type OperationAtomicLoad struct {
+	Type UnsignedType
+	Arg  MemoryArg
+}
+
+// Kind implements Operation.Kind.
+func (OperationAtomicLoad) Kind() OperationKind {
+	return OperationKindAtomicLoad
+}
+
+// OperationAtomicLoad8U implements Operation.
+//
+// This corresponds to
+//
+//	wasm.OpcodeAtomicI32Load8UName wasm.OpcodeAtomicI64Load8UName
+type OperationAtomicLoad8U struct {
+	Type UnsignedType
+	Arg  MemoryArg
+}
+
+// Kind implements Operation.Kind.
+func (OperationAtomicLoad8U) Kind() OperationKind {
+	return OperationKindAtomicLoad8U
+}
+
+// OperationAtomicStore implements Operation.
+//
+// This corresponds to
+//
+//	wasm.OpcodeAtomicI32StoreName wasm.OpcodeAtomicI64StoreName
+type OperationAtomicStore struct {
+	Type UnsignedType
+	Arg  MemoryArg
+}
+
+// Kind implements Operation.Kind.
+func (OperationAtomicStore) Kind() OperationKind {
+	return OperationKindAtomicStore
+}
+
+// OperationAtomicRMWCmpxchg implements Operation.
+//
+// This corresponds to
+//
+//	wasm.OpcodeAtomicI32RMWCmpxchgName wasm.OpcodeAtomicI64RmwCmpxchgName
+type OperationAtomicRMWCmpxchg struct {
+	Type UnsignedType
+	Arg  MemoryArg
+}
+
+// Kind implements Operation.Kind.
+func (OperationAtomicRMWCmpxchg) Kind() OperationKind {
+	return OperationKindAtomicRMWCmpxchg
+}
+
+// OperationAtomicRMWXchg implements Operation.
+//
+// This corresponds to
+//
+//	wasm.OpcodeAtomicI32RMWXchgName wasm.OpcodeAtomicI64RmwXchgName
+type OperationAtomicRMWXchg struct {
+	Type UnsignedType
+	Arg  MemoryArg
+}
+
+// Kind implements Operation.Kind.
+func (OperationAtomicRMWXchg) Kind() OperationKind {
+	return OperationKindAtomicRMWXchg
 }

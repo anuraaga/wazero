@@ -6,6 +6,7 @@ import (
 	"math"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"unsafe"
 
 	"github.com/tetratelabs/wazero/api"
@@ -70,6 +71,26 @@ func (m *MemoryInstance) ReadByte(offset uint32) (byte, bool) {
 	return m.Buffer[offset], true
 }
 
+// ReadByte implements the same method as documented on api.Memory.
+func (m *MemoryInstance) AtomicReadByte(offset uint32) (byte, bool) {
+	// TODO: Only supports little-endian arch
+	if offset >= m.size() {
+		return 0, false
+	}
+	// HACK: There is no atomic method for loading a byte. So we use a 32-bit load and mask the byte.
+	// Page size is 64KB so we know there is at least 4 bytes in memory, though we need to care about
+	// the offset if at the beginning
+	switch offset {
+	case 0, 1, 2:
+		val := atomic.LoadUint32((*uint32)(unsafe.Pointer(&m.Buffer[0])))
+		return byte(val >> (offset * 8)), true
+	default:
+		val := atomic.LoadUint32((*uint32)(unsafe.Pointer(&m.Buffer[offset-3])))
+		return byte(val >> 24), true
+	}
+	return m.Buffer[offset], true
+}
+
 // ReadUint16Le implements the same method as documented on api.Memory.
 func (m *MemoryInstance) ReadUint16Le(offset uint32) (uint16, bool) {
 	if !m.hasSize(offset, 2) {
@@ -81,6 +102,11 @@ func (m *MemoryInstance) ReadUint16Le(offset uint32) (uint16, bool) {
 // ReadUint32Le implements the same method as documented on api.Memory.
 func (m *MemoryInstance) ReadUint32Le(offset uint32) (uint32, bool) {
 	return m.readUint32Le(offset)
+}
+
+// ReadUint32Le implements the same method as documented on api.Memory.
+func (m *MemoryInstance) AtomicReadUint32Le(offset uint32) (uint32, bool) {
+	return m.atomicReadUint32Le(offset)
 }
 
 // ReadFloat32Le implements the same method as documented on api.Memory.
@@ -95,6 +121,11 @@ func (m *MemoryInstance) ReadFloat32Le(offset uint32) (float32, bool) {
 // ReadUint64Le implements the same method as documented on api.Memory.
 func (m *MemoryInstance) ReadUint64Le(offset uint32) (uint64, bool) {
 	return m.readUint64Le(offset)
+}
+
+// ReadUint64Le implements the same method as documented on api.Memory.
+func (m *MemoryInstance) AtomicReadUint64Le(offset uint32) (uint64, bool) {
+	return m.atomicReadUint64Le(offset)
 }
 
 // ReadFloat64Le implements the same method as documented on api.Memory.
@@ -137,6 +168,18 @@ func (m *MemoryInstance) WriteUint32Le(offset, v uint32) bool {
 	return m.writeUint32Le(offset, v)
 }
 
+// WriteUint32Le implements the same method as documented on api.Memory.
+func (m *MemoryInstance) AtomicWriteUint32Le(offset, v uint32) bool {
+	return m.atomicWriteUint32Le(offset, v)
+}
+
+func (m *MemoryInstance) HostPointer(offset, size uint32) (unsafe.Pointer, bool) {
+	if !m.hasSize(offset, size) {
+		return nil, false
+	}
+	return unsafe.Pointer(&m.Buffer[offset]), true
+}
+
 // WriteFloat32Le implements the same method as documented on api.Memory.
 func (m *MemoryInstance) WriteFloat32Le(offset uint32, v float32) bool {
 	return m.writeUint32Le(offset, math.Float32bits(v))
@@ -145,6 +188,11 @@ func (m *MemoryInstance) WriteFloat32Le(offset uint32, v float32) bool {
 // WriteUint64Le implements the same method as documented on api.Memory.
 func (m *MemoryInstance) WriteUint64Le(offset uint32, v uint64) bool {
 	return m.writeUint64Le(offset, v)
+}
+
+// WriteUint64Le implements the same method as documented on api.Memory.
+func (m *MemoryInstance) AtomicWriteUint64Le(offset uint32, v uint64) bool {
+	return m.atomicWriteUint64Le(offset, v)
 }
 
 // WriteFloat64Le implements the same method as documented on api.Memory.
@@ -253,6 +301,15 @@ func (m *MemoryInstance) readUint32Le(offset uint32) (uint32, bool) {
 	return binary.LittleEndian.Uint32(m.Buffer[offset : offset+4]), true
 }
 
+// atomicReadUint32Le implements ReadUint32Le without using a context. This is extracted as both ints and floats are stored in
+// memory as uint32le.
+func (m *MemoryInstance) atomicReadUint32Le(offset uint32) (uint32, bool) {
+	if !m.hasSize(offset, 4) {
+		return 0, false
+	}
+	return atomic.LoadUint32((*uint32)(unsafe.Pointer(&m.Buffer[offset]))), true
+}
+
 // readUint64Le implements ReadUint64Le without using a context. This is extracted as both ints and floats are stored in
 // memory as uint64le.
 func (m *MemoryInstance) readUint64Le(offset uint32) (uint64, bool) {
@@ -260,6 +317,15 @@ func (m *MemoryInstance) readUint64Le(offset uint32) (uint64, bool) {
 		return 0, false
 	}
 	return binary.LittleEndian.Uint64(m.Buffer[offset : offset+8]), true
+}
+
+// readUint64Le implements ReadUint64Le without using a context. This is extracted as both ints and floats are stored in
+// memory as uint64le.
+func (m *MemoryInstance) atomicReadUint64Le(offset uint32) (uint64, bool) {
+	if !m.hasSize(offset, 8) {
+		return 0, false
+	}
+	return atomic.LoadUint64((*uint64)(unsafe.Pointer(&m.Buffer[offset]))), true
 }
 
 // writeUint32Le implements WriteUint32Le without using a context. This is extracted as both ints and floats are stored
@@ -272,6 +338,16 @@ func (m *MemoryInstance) writeUint32Le(offset uint32, v uint32) bool {
 	return true
 }
 
+// writeUint32Le implements WriteUint32Le without using a context. This is extracted as both ints and floats are stored
+// in memory as uint32le.
+func (m *MemoryInstance) atomicWriteUint32Le(offset uint32, v uint32) bool {
+	if !m.hasSize(offset, 4) {
+		return false
+	}
+	atomic.StoreUint32((*uint32)(unsafe.Pointer(&m.Buffer[offset])), v)
+	return true
+}
+
 // writeUint64Le implements WriteUint64Le without using a context. This is extracted as both ints and floats are stored
 // in memory as uint64le.
 func (m *MemoryInstance) writeUint64Le(offset uint32, v uint64) bool {
@@ -279,5 +355,15 @@ func (m *MemoryInstance) writeUint64Le(offset uint32, v uint64) bool {
 		return false
 	}
 	binary.LittleEndian.PutUint64(m.Buffer[offset:], v)
+	return true
+}
+
+// writeUint64Le implements WriteUint64Le without using a context. This is extracted as both ints and floats are stored
+// in memory as uint64le.
+func (m *MemoryInstance) atomicWriteUint64Le(offset uint32, v uint64) bool {
+	if !m.hasSize(offset, 8) {
+		return false
+	}
+	atomic.StoreUint64((*uint64)(unsafe.Pointer(&m.Buffer[offset])), v)
 	return true
 }

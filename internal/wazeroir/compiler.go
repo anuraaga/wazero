@@ -404,6 +404,8 @@ func (c *compiler) handleInstruction() error {
 			instName = wasm.VectorInstructionName(c.body[c.pc+1])
 		} else if op == wasm.OpcodeMiscPrefix {
 			instName = wasm.MiscInstructionName(c.body[c.pc+1])
+		} else if op == wasm.OpcodeAtomicPrefix {
+			instName = wasm.AtomicInstructionName(c.body[c.pc+1])
 		} else {
 			instName = wasm.InstructionName(op)
 		}
@@ -2920,6 +2922,42 @@ operatorSwitch:
 			)
 		default:
 			return fmt.Errorf("unsupported vector instruction in wazeroir: %s", wasm.VectorInstructionName(vecOp))
+		}
+	case wasm.OpcodeAtomicPrefix:
+		c.pc++
+		atomicOp := c.body[c.pc]
+		// All atomic operations have a memarg
+		imm, err := c.readMemoryArg(wasm.OpcodeAtomicI32RmwCmpxchgName)
+		if err != nil {
+			return err
+		}
+		switch atomicOp {
+		case wasm.OpcodeAtomicMemoryWait32:
+			c.emit(OperationAtomicMemoryWait{Type: UnsignedTypeI32, Arg: imm})
+		case wasm.OpcodeAtomicMemoryWait64:
+			c.emit(OperationAtomicMemoryWait{Type: UnsignedTypeI64, Arg: imm})
+		case wasm.OpcodeAtomicMemoryNotify:
+			c.emit(OperationAtomicMemoryNotify{Arg: imm})
+		case wasm.OpcodeAtomicFence:
+			c.emit(OperationAtomicFence{})
+		case wasm.OpcodeAtomicI32Load:
+			c.emit(OperationAtomicLoad{Type: UnsignedTypeI32, Arg: imm})
+		case wasm.OpcodeAtomicI32Load8U:
+			c.emit(OperationAtomicLoad8U{Type: UnsignedTypeI32, Arg: imm})
+		case wasm.OpcodeAtomicI64Load:
+			c.emit(OperationAtomicLoad{Type: UnsignedTypeI64, Arg: imm})
+		case wasm.OpcodeAtomicI32Store:
+			c.emit(OperationAtomicStore{Type: UnsignedTypeI32, Arg: imm})
+		case wasm.OpcodeAtomicI64Store:
+			c.emit(OperationAtomicStore{Type: UnsignedTypeI64, Arg: imm})
+		case wasm.OpcodeAtomicI32RmwXchg:
+			c.emit(OperationAtomicRMWXchg{Type: UnsignedTypeI32, Arg: imm})
+		case wasm.OpcodeAtomicI64RmwXchg:
+			c.emit(OperationAtomicRMWXchg{Type: UnsignedTypeI64, Arg: imm})
+		case wasm.OpcodeAtomicI32RmwCmpxchg:
+			c.emit(OperationAtomicRMWCmpxchg{Type: UnsignedTypeI32, Arg: imm})
+		case wasm.OpcodeAtomicI64RmwCmpxchg:
+			c.emit(OperationAtomicRMWCmpxchg{Type: UnsignedTypeI64, Arg: imm})
 		}
 	default:
 		return fmt.Errorf("unsupported instruction in wazeroir: 0x%x", op)

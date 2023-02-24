@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/bits"
 	"sync"
+	"sync/atomic"
 	"unsafe"
 
 	"github.com/tetratelabs/wazero/api"
@@ -226,7 +227,7 @@ func (e *engine) CompileModule(ctx context.Context, module *wasm.Module, listene
 	}
 
 	funcs := make([]*code, len(module.FunctionSection))
-	irs, err := wazeroir.CompileFunctions(e.enabledFeatures, callFrameStackSize, module, ensureTermination)
+	irs, err := wazeroirCompileFunctions(e.enabledFeatures, callFrameStackSize, module, ensureTermination)
 	if err != nil {
 		return err
 	}
@@ -715,6 +716,40 @@ func (e *engine) lowerIR(ir *wazeroir.CompilationResult) (*code, error) {
 		case wazeroir.OperationV128ITruncSatFromF:
 			op.b1 = o.OriginShape
 			op.b3 = o.Signed
+		case wazeroir.OperationAtomicMemoryWait:
+			op.b1 = byte(o.Type)
+			op.us = make([]uint64, 2)
+			op.us[0] = uint64(o.Arg.Alignment)
+			op.us[1] = uint64(o.Arg.Offset)
+		case wazeroir.OperationAtomicMemoryNotify:
+			op.us = make([]uint64, 2)
+			op.us[0] = uint64(o.Arg.Alignment)
+			op.us[1] = uint64(o.Arg.Offset)
+		case wazeroir.OperationAtomicLoad:
+			op.b1 = byte(o.Type)
+			op.us = make([]uint64, 2)
+			op.us[0] = uint64(o.Arg.Alignment)
+			op.us[1] = uint64(o.Arg.Offset)
+		case wazeroir.OperationAtomicLoad8U:
+			op.b1 = byte(o.Type)
+			op.us = make([]uint64, 2)
+			op.us[0] = uint64(o.Arg.Alignment)
+			op.us[1] = uint64(o.Arg.Offset)
+		case wazeroir.OperationAtomicStore:
+			op.b1 = byte(o.Type)
+			op.us = make([]uint64, 2)
+			op.us[0] = uint64(o.Arg.Alignment)
+			op.us[1] = uint64(o.Arg.Offset)
+		case wazeroir.OperationAtomicRMWXchg:
+			op.b1 = byte(o.Type)
+			op.us = make([]uint64, 2)
+			op.us[0] = uint64(o.Arg.Alignment)
+			op.us[1] = uint64(o.Arg.Offset)
+		case wazeroir.OperationAtomicRMWCmpxchg:
+			op.b1 = byte(o.Type)
+			op.us = make([]uint64, 2)
+			op.us[0] = uint64(o.Arg.Alignment)
+			op.us[1] = uint64(o.Arg.Offset)
 		default:
 			panic(fmt.Errorf("BUG: unimplemented operation %s", op.kind.String()))
 		}
@@ -4143,6 +4178,120 @@ func (ce *callEngine) callNativeFunc(ctx context.Context, callCtx *wasm.CallCont
 			ce.pushValue(retLo)
 			ce.pushValue(retHi)
 			frame.pc++
+		case wazeroir.OperationKindAtomicMemoryWait:
+			// Stub for now
+			_ = ce.popValue() // timeout
+			_ = ce.popValue() // value
+			_ = ce.popMemoryOffset(op)
+			ce.pushValue(0)
+			frame.pc++
+		case wazeroir.OperationKindAtomicMemoryNotify:
+			// Stub for now
+			_ = ce.popValue() // count
+			_ = ce.popMemoryOffset(op)
+			ce.pushValue(0)
+			frame.pc++
+		case wazeroir.OperationKindAtomicFence:
+			// TODO: Can this be implemented?
+			frame.pc++
+		case wazeroir.OperationKindAtomicLoad:
+			offset := ce.popMemoryOffset(op)
+			switch wazeroir.UnsignedType(op.b1) {
+			case wazeroir.UnsignedTypeI32:
+				if val, ok := memoryInst.AtomicReadUint32Le(offset); !ok {
+					panic(wasmruntime.ErrRuntimeOutOfBoundsMemoryAccess)
+				} else {
+					ce.pushValue(uint64(val))
+				}
+			case wazeroir.UnsignedTypeI64:
+				if val, ok := memoryInst.AtomicReadUint64Le(offset); !ok {
+					panic(wasmruntime.ErrRuntimeOutOfBoundsMemoryAccess)
+				} else {
+					ce.pushValue(val)
+				}
+			}
+			frame.pc++
+		case wazeroir.OperationKindAtomicLoad8U:
+			val, ok := memoryInst.AtomicReadByte(ce.popMemoryOffset(op))
+			if !ok {
+				panic(wasmruntime.ErrRuntimeOutOfBoundsMemoryAccess)
+			}
+			switch wazeroir.UnsignedType(op.b1) {
+			case wazeroir.UnsignedTypeI32:
+				ce.pushValue(uint64(uint32(val)))
+			case wazeroir.UnsignedTypeI64:
+				ce.pushValue(uint64(val))
+			}
+			frame.pc++
+		case wazeroir.OperationKindAtomicStore:
+			val := ce.popValue()
+			offset := ce.popMemoryOffset(op)
+			switch wazeroir.UnsignedType(op.b1) {
+			case wazeroir.UnsignedTypeI32:
+				if !memoryInst.AtomicWriteUint32Le(offset, uint32(val)) {
+					panic(wasmruntime.ErrRuntimeOutOfBoundsMemoryAccess)
+				}
+			case wazeroir.UnsignedTypeI64:
+				if !memoryInst.AtomicWriteUint64Le(offset, val) {
+					panic(wasmruntime.ErrRuntimeOutOfBoundsMemoryAccess)
+				}
+			}
+			frame.pc++
+		case wazeroir.OperationKindAtomicRMWXchg:
+			val := ce.popValue()
+			offset := ce.popMemoryOffset(op)
+			switch wazeroir.UnsignedType(op.b1) {
+			case wazeroir.UnsignedTypeI32:
+				ptr, ok := memoryInst.HostPointer(offset, 4)
+				if !ok {
+					panic(wasmruntime.ErrRuntimeOutOfBoundsMemoryAccess)
+				}
+				old := atomic.SwapUint32((*uint32)(ptr), uint32(val))
+				ce.pushValue(uint64(old))
+			case wazeroir.UnsignedTypeI64:
+				ptr, ok := memoryInst.HostPointer(offset, 8)
+				if !ok {
+					panic(wasmruntime.ErrRuntimeOutOfBoundsMemoryAccess)
+				}
+				old := atomic.SwapUint64((*uint64)(ptr), val)
+				ce.pushValue(old)
+			}
+			frame.pc++
+		case wazeroir.OperationKindAtomicRMWCmpxchg:
+			rep := ce.popValue()
+			exp := ce.popValue()
+			offset := ce.popMemoryOffset(op)
+			switch wazeroir.UnsignedType(op.b1) {
+			case wazeroir.UnsignedTypeI32:
+				ptr, ok := memoryInst.HostPointer(offset, 4)
+				if !ok {
+					panic(wasmruntime.ErrRuntimeOutOfBoundsMemoryAccess)
+				}
+				// Go does not return old value for CAS so we load it first.
+				old := atomic.LoadUint32((*uint32)(ptr))
+				if atomic.CompareAndSwapUint32((*uint32)(ptr), uint32(exp), uint32(rep)) {
+					// CAS succeeded, regardless of what we loaded the value was actually exp
+					ce.pushValue(exp)
+				} else {
+					ce.pushValue(uint64(old))
+				}
+			case wazeroir.UnsignedTypeI64:
+				ptr, ok := memoryInst.HostPointer(offset, 8)
+				if !ok {
+					panic(wasmruntime.ErrRuntimeOutOfBoundsMemoryAccess)
+				}
+				// Go does not return old value for CAS so we load it first.
+				old := atomic.LoadUint64((*uint64)(ptr))
+				if atomic.CompareAndSwapUint64((*uint64)(ptr), exp, rep) {
+					// CAS succeeded, regardless of what we loaded the value was actually exp
+					ce.pushValue(exp)
+				} else {
+					ce.pushValue(old)
+				}
+			}
+			frame.pc++
+		default:
+			panic(fmt.Errorf("unknown operation %s", op.kind))
 		}
 	}
 	ce.popFrame()

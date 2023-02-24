@@ -88,6 +88,8 @@ func (m *Module) validateFunctionWithMaxStackValues(
 				instName = MiscInstructionName(body[pc+1])
 			} else if op == OpcodeVecPrefix {
 				instName = VectorInstructionName(body[pc+1])
+			} else if op == OpcodeAtomicPrefix {
+				instName = AtomicInstructionName(body[pc+1])
 			} else {
 				instName = InstructionName(op)
 			}
@@ -1391,6 +1393,162 @@ func (m *Module) validateFunctionWithMaxStackValues(
 				valueTypeStack.push(ValueTypeV128)
 			default:
 				return fmt.Errorf("TODO: SIMD instruction %s will be implemented in #506", vectorInstructionName[vecOpcode])
+			}
+		} else if op == OpcodeAtomicPrefix {
+			pc++
+			// Atomic instructions come with two bytes where the first byte is always OpcodeAtomicPrefix,
+			// and the second byte determines the actual instruction.
+			atomicOpcode := body[pc]
+			pc++
+			// TODO(RequireEnabled)
+
+			if atomicOpcode == OpcodeAtomicFence {
+				continue
+			}
+
+			// All atomic operations except require memory
+			if memory == nil && !code.IsHostFunction {
+				return fmt.Errorf("memory must exist for %s", AtomicInstructionName(atomicOpcode))
+			}
+			align, _, read, err := readMemArg(pc, body)
+			if err != nil {
+				return err
+			}
+			pc += read - 1
+			switch atomicOpcode {
+			case OpcodeAtomicMemoryWait32:
+				if 1<<align > 32/8 {
+					return fmt.Errorf("invalid memory alignment")
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI64); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				valueTypeStack.push(ValueTypeI32)
+			case OpcodeAtomicMemoryWait64:
+				if 1<<align > 64/8 {
+					return fmt.Errorf("invalid memory alignment")
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI64); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI64); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				valueTypeStack.push(ValueTypeI32)
+			case OpcodeAtomicMemoryNotify:
+				// TODO: Alignment check
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				valueTypeStack.push(ValueTypeI32)
+			case OpcodeAtomicI32Load:
+				if 1<<align > 32/8 {
+					return fmt.Errorf("invalid memory alignment")
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				valueTypeStack.push(ValueTypeI32)
+			case OpcodeAtomicI32Load8U:
+				if 1<<align > 1 {
+					return fmt.Errorf("invalid memory alignment")
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				valueTypeStack.push(ValueTypeI32)
+			case OpcodeAtomicI64Load:
+				if 1<<align > 64/8 {
+					return fmt.Errorf("invalid memory alignment")
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				valueTypeStack.push(ValueTypeI64)
+			case OpcodeAtomicI32Store:
+				if 1<<align > 32/8 {
+					return fmt.Errorf("invalid memory alignment")
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+			case OpcodeAtomicI64Store:
+				if 1<<align > 64/8 {
+					return fmt.Errorf("invalid memory alignment")
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI64); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+			case OpcodeAtomicI32RmwXchg:
+				if 1<<align > 32/8 {
+					return fmt.Errorf("invalid memory alignment")
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				valueTypeStack.push(ValueTypeI32)
+			case OpcodeAtomicI64RmwXchg:
+				if 1<<align > 64/8 {
+					return fmt.Errorf("invalid memory alignment")
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI64); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				valueTypeStack.push(ValueTypeI64)
+			case OpcodeAtomicI32RmwCmpxchg:
+				if 1<<align > 32/8 {
+					return fmt.Errorf("invalid memory alignment")
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				valueTypeStack.push(ValueTypeI32)
+			case OpcodeAtomicI64RmwCmpxchg:
+				if 1<<align > 32/8 {
+					return fmt.Errorf("invalid memory alignment")
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI64); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI64); err != nil {
+					return err
+				}
+				if err := valueTypeStack.popAndVerifyType(ValueTypeI32); err != nil {
+					return err
+				}
+				valueTypeStack.push(ValueTypeI64)
+			default:
+				return fmt.Errorf("invalid atomic opcode: 0x%x", atomicOpcode)
 			}
 		} else if op == OpcodeBlock {
 			br.Reset(body[pc+1:])

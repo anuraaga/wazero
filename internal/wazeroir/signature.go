@@ -233,6 +233,18 @@ var (
 		in:  []UnsignedType{UnsignedTypeF64},
 		out: []UnsignedType{UnsignedTypeV128},
 	}
+	signature_I32I32I64_I32 = &signature{
+		in:  []UnsignedType{UnsignedTypeI32, UnsignedTypeI32, UnsignedTypeI64},
+		out: []UnsignedType{UnsignedTypeI32},
+	}
+	signature_I32I64I64_I32 = &signature{
+		in:  []UnsignedType{UnsignedTypeI32, UnsignedTypeI64, UnsignedTypeI64},
+		out: []UnsignedType{UnsignedTypeI32},
+	}
+	signature_I32I32I32_I32 = &signature{
+		in:  []UnsignedType{UnsignedTypeI32, UnsignedTypeI32, UnsignedTypeI32},
+		out: []UnsignedType{UnsignedTypeI32},
+	}
 )
 
 // wasmOpcodeSignature returns the signature of given Wasm opcode.
@@ -585,6 +597,31 @@ func (c *compiler) wasmOpcodeSignature(op wasm.Opcode, index uint32) (*signature
 			return signature_V128V128_V128, nil
 		default:
 			return nil, fmt.Errorf("unsupported vector instruction in wazeroir: %s", wasm.VectorInstructionName(vecOp))
+		}
+	case wasm.OpcodeAtomicPrefix:
+		switch atomicOp := c.body[c.pc+1]; atomicOp {
+		case wasm.OpcodeAtomicMemoryNotify:
+			return signature_I32I32_I32, nil
+		case wasm.OpcodeAtomicMemoryWait32:
+			return signature_I32I32I64_I32, nil
+		case wasm.OpcodeAtomicMemoryWait64:
+			return signature_I32I64I64_I32, nil
+		case wasm.OpcodeAtomicFence:
+			return signature_None_None, nil
+		case wasm.OpcodeAtomicI32Load, wasm.OpcodeAtomicI32Load8U:
+			return signature_I32_I32, nil
+		case wasm.OpcodeAtomicI64Load:
+			return signature_I32_I64, nil
+		case wasm.OpcodeAtomicI32Store:
+			return signature_I32I32_None, nil
+		case wasm.OpcodeAtomicI64Store:
+			return signature_I32I64_None, nil
+		case wasm.OpcodeAtomicI32RmwXchg:
+			return signature_I32I32_I32, nil
+		case wasm.OpcodeAtomicI32RmwCmpxchg:
+			return signature_I32I32I32_I32, nil
+		default:
+			return nil, fmt.Errorf("unsupported atomic instruction in wazeroir: %s", wasm.AtomicInstructionName(atomicOp))
 		}
 	default:
 		return nil, fmt.Errorf("unsupported instruction in wazeroir: 0x%x", op)
