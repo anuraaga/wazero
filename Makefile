@@ -5,6 +5,7 @@ golangci_lint := github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
 asmfmt        := github.com/klauspost/asmfmt/cmd/asmfmt@v1.3.2
 # sync this with netlify.toml!
 hugo          := github.com/gohugoio/hugo@v0.115.2
+wast2json     := github.com/wasilibs/go-wabt/cmd/wast2json@71fc07c
 
 # Make 3.81 doesn't support '**' globbing: Set explicitly instead of recursion.
 all_sources   := $(wildcard *.go */*.go */*/*.go */*/*/*.go */*/*/*.go */*/*/*/*.go)
@@ -149,7 +150,7 @@ build.spectest.v1: # Note: wabt by default uses >1.0 features, so wast2json flag
 		perl -pi -e 's/\(assert_return_arithmetic_nan\s(\(invoke\s"[a-z._0-9]+"\s\((f[0-9]{2})\.const\s[a-z0-9.+:-]+\)\s\([a-z0-9.\s+-:]+\)\))\)/\(assert_return $$1 \($$2.const nan:arithmetic\)\)/g' $$f; \
 		perl -pi -e 's/\(assert_return_canonical_nan\s(\(invoke\s"[a-z._0-9]+"\s\((f[0-9]{2})\.const\s[a-z0-9.+:-]+\)\))\)/\(assert_return $$1 \($$2.const nan:canonical\)\)/g' $$f; \
 		perl -pi -e 's/\(assert_return_arithmetic_nan\s(\(invoke\s"[a-z._0-9]+"\s\((f[0-9]{2})\.const\s[a-z0-9.+:-]+\)\))\)/\(assert_return $$1 \($$2.const nan:arithmetic\)\)/g' $$f; \
-		wast2json \
+		go run $(wast2json) \
 			--disable-saturating-float-to-int \
 			--disable-sign-extension \
 			--disable-simd \
@@ -167,7 +168,7 @@ build.spectest.v2: # Note: SIMD cases are placed in the "simd" subdirectory.
 	@cd $(spectest_v2_testdata_dir) \
 		&& curl -sSL 'https://api.github.com/repos/WebAssembly/spec/contents/test/core/simd?ref=$(spec_version_v2)' | jq -r '.[]| .download_url' | grep -E ".wast" | xargs -Iurl curl -sJL url -O
 	@cd $(spectest_v2_testdata_dir) && for f in `find . -name '*.wast'`; do \
-		wast2json --debug-names --no-check $$f; \
+		go run $(wast2json) --debug-names --no-check $$f; \
 	done
 
 # Note: We currently cannot build the "threads" subdirectory that spawns threads due to missing support in wast2json.
@@ -178,7 +179,7 @@ build.spectest.threads:
 	@cd $(spectest_threads_testdata_dir) \
 		&& curl -sSL 'https://api.github.com/repos/WebAssembly/threads/contents/test/core?ref=$(spec_version_threads)' | jq -r '.[]| .download_url' | grep -E "atomic.wast" | xargs -Iurl curl -sJL url -O
 	@cd $(spectest_threads_testdata_dir) && for f in `find . -name '*.wast'`; do \
-		wast2json --enable-threads --debug-names $$f; \
+		go run $(wast2json) --enable-threads --debug-names $$f; \
 	done
 
 .PHONY: test
