@@ -2269,6 +2269,237 @@ L2:
 `,
 		},
 		{
+			name: "AtomicCas",
+			m:    testcases.AtomicCas.Module,
+			afterFinalizeARM64: `
+L1 (SSA Block: blk0):
+	orr x27, xzr, #0x40
+	sub sp, sp, x27
+	stp x30, x27, [sp, #-0x10]!
+	str x19, [sp, #-0x10]!
+	str x20, [sp, #-0x10]!
+	str x21, [sp, #-0x10]!
+	str x22, [sp, #-0x10]!
+	orr x27, xzr, #0x40
+	str x27, [sp, #-0x10]!
+	ldr x8, [sp, #0x60]
+	ldr x9, [sp, #0x68]
+	ldr x10, [sp, #0x70]
+	ldr x11, [sp, #0x78]
+	ldr x12, [sp, #0x80]
+	ldr x13, [sp, #0x88]
+	ldr x14, [sp, #0x90]
+	ldr x15, [sp, #0x98]
+	mov x16, xzr
+	uxtw x16, w16
+	add x17, x1, #0x10
+	ldar x17, x17
+	add x19, x16, #0x1
+	subs xzr, x17, x19
+	mov x17, x0
+	b.hs #0x34, (L13)
+	movz x19, #0x4, lsl 0
+	str w19, [x17]
+	mov x19, sp
+	str x19, [x17, #0x38]
+	adr x19, #0x0
+	str x19, [x17, #0x30]
+	exit_sequence x17
+L13:
+	ldr x17, [x1, #0x8]
+	add x16, x17, x16
+	mov w19, w2
+	casalb w19, w3, x16
+	mov w16, w19
+	mov x19, xzr
+	uxtw x19, w19
+	add x20, x1, #0x10
+	ldar x20, x20
+	add x21, x19, #0xa
+	subs xzr, x20, x21
+	mov x20, x0
+	b.hs #0x34, (L12)
+	movz x21, #0x4, lsl 0
+	str w21, [x20]
+	mov x21, sp
+	str x21, [x20, #0x38]
+	adr x21, #0x0
+	str x21, [x20, #0x30]
+	exit_sequence x20
+L12:
+	add x19, x17, x19
+	add x19, x19, #0x8
+	ands xzr, x19, #0x1
+	mov x20, x0
+	b.eq #0x34, (L11)
+	movz x21, #0x17, lsl 0
+	str w21, [x20]
+	mov x21, sp
+	str x21, [x20, #0x38]
+	adr x21, #0x0
+	str x21, [x20, #0x30]
+	exit_sequence x20
+L11:
+	mov w20, w4
+	casalh w20, w5, x19
+	mov w19, w20
+	mov x20, xzr
+	uxtw x20, w20
+	add x21, x1, #0x10
+	ldar x21, x21
+	add x22, x20, #0x14
+	subs xzr, x21, x22
+	mov x21, x0
+	b.hs #0x34, (L10)
+	movz x22, #0x4, lsl 0
+	str w22, [x21]
+	mov x22, sp
+	str x22, [x21, #0x38]
+	adr x22, #0x0
+	str x22, [x21, #0x30]
+	exit_sequence x21
+L10:
+	add x20, x17, x20
+	add x20, x20, #0x10
+	ands xzr, x20, #0x3
+	mov x21, x0
+	b.eq #0x34, (L9)
+	movz x22, #0x17, lsl 0
+	str w22, [x21]
+	mov x22, sp
+	str x22, [x21, #0x38]
+	adr x22, #0x0
+	str x22, [x21, #0x30]
+	exit_sequence x21
+L9:
+	mov w21, w6
+	casal w21, w7, x20
+	mov w2, w21
+	mov x20, xzr
+	uxtw x20, w20
+	add x21, x1, #0x10
+	ldar x21, x21
+	add x22, x20, #0x19
+	subs xzr, x21, x22
+	mov x21, x0
+	b.hs #0x34, (L8)
+	movz x22, #0x4, lsl 0
+	str w22, [x21]
+	mov x22, sp
+	str x22, [x21, #0x38]
+	adr x22, #0x0
+	str x22, [x21, #0x30]
+	exit_sequence x21
+L8:
+	add x20, x17, x20
+	add x20, x20, #0x18
+	casalb w8, w9, x20
+	mov x3, x8
+	mov x8, xzr
+	uxtw x8, w8
+	add x9, x1, #0x10
+	ldar x9, x9
+	add x20, x8, #0x22
+	subs xzr, x9, x20
+	mov x9, x0
+	b.hs #0x34, (L7)
+	movz x20, #0x4, lsl 0
+	str w20, [x9]
+	mov x20, sp
+	str x20, [x9, #0x38]
+	adr x20, #0x0
+	str x20, [x9, #0x30]
+	exit_sequence x9
+L7:
+	add x8, x17, x8
+	add x8, x8, #0x20
+	ands xzr, x8, #0x1
+	mov x9, x0
+	b.eq #0x34, (L6)
+	movz x20, #0x17, lsl 0
+	str w20, [x9]
+	mov x20, sp
+	str x20, [x9, #0x38]
+	adr x20, #0x0
+	str x20, [x9, #0x30]
+	exit_sequence x9
+L6:
+	casalh w10, w11, x8
+	mov x4, x10
+	mov x8, xzr
+	uxtw x8, w8
+	add x9, x1, #0x10
+	ldar x9, x9
+	add x10, x8, #0x2c
+	subs xzr, x9, x10
+	mov x9, x0
+	b.hs #0x34, (L5)
+	movz x10, #0x4, lsl 0
+	str w10, [x9]
+	mov x10, sp
+	str x10, [x9, #0x38]
+	adr x10, #0x0
+	str x10, [x9, #0x30]
+	exit_sequence x9
+L5:
+	add x8, x17, x8
+	add x8, x8, #0x28
+	ands xzr, x8, #0x3
+	mov x9, x0
+	b.eq #0x34, (L4)
+	movz x10, #0x17, lsl 0
+	str w10, [x9]
+	mov x10, sp
+	str x10, [x9, #0x38]
+	adr x10, #0x0
+	str x10, [x9, #0x30]
+	exit_sequence x9
+L4:
+	casal w12, w13, x8
+	mov x5, x12
+	mov x8, xzr
+	uxtw x8, w8
+	add x9, x1, #0x10
+	ldar x9, x9
+	add x10, x8, #0x38
+	subs xzr, x9, x10
+	mov x9, x0
+	b.hs #0x34, (L3)
+	movz x10, #0x4, lsl 0
+	str w10, [x9]
+	mov x10, sp
+	str x10, [x9, #0x38]
+	adr x10, #0x0
+	str x10, [x9, #0x30]
+	exit_sequence x9
+L3:
+	add x8, x17, x8
+	add x8, x8, #0x30
+	ands xzr, x8, #0x7
+	b.eq #0x34, (L2)
+	movz x9, #0x17, lsl 0
+	str w9, [x0]
+	mov x9, sp
+	str x9, [x0, #0x38]
+	adr x9, #0x0
+	str x9, [x0, #0x30]
+	exit_sequence x0
+L2:
+	casal x14, x15, x8
+	mov x6, x14
+	mov x1, x19
+	mov x0, x16
+	add sp, sp, #0x10
+	ldr x22, [sp], #0x10
+	ldr x21, [sp], #0x10
+	ldr x20, [sp], #0x10
+	ldr x19, [sp], #0x10
+	ldr x30, [sp], #0x10
+	add sp, sp, #0x40
+	ret
+`,
+		},
+		{
 			name: "icmp_and_zero",
 			m:    testcases.IcmpAndZero.Module,
 			afterFinalizeAMD64: `
