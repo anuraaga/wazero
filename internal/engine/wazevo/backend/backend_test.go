@@ -2269,6 +2269,211 @@ L2:
 `,
 		},
 		{
+			name: "AtomicRmwXchg",
+			m:    testcases.AtomicRmwXchg.Module,
+			afterFinalizeARM64: `
+L1 (SSA Block: blk0):
+	orr x27, xzr, #0x10
+	sub sp, sp, x27
+	stp x30, x27, [sp, #-0x10]!
+	str xzr, [sp, #-0x10]!
+	ldr x8, [sp, #0x20]
+	mov x9, xzr
+	uxtw x9, w9
+	add x10, x1, #0x10
+	ldar x10, x10
+	add x11, x9, #0x1
+	subs xzr, x10, x11
+	mov x10, x0
+	b.hs #0x34, (L13)
+	movz x11, #0x4, lsl 0
+	str w11, [x10]
+	mov x11, sp
+	str x11, [x10, #0x38]
+	adr x11, #0x0
+	str x11, [x10, #0x30]
+	exit_sequence x10
+L13:
+	ldr x10, [x1, #0x8]
+	add x9, x10, x9
+	swpalb w2, w9, x9
+	mov x11, xzr
+	uxtw x11, w11
+	add x12, x1, #0x10
+	ldar x12, x12
+	add x13, x11, #0xa
+	subs xzr, x12, x13
+	mov x12, x0
+	b.hs #0x34, (L12)
+	movz x13, #0x4, lsl 0
+	str w13, [x12]
+	mov x13, sp
+	str x13, [x12, #0x38]
+	adr x13, #0x0
+	str x13, [x12, #0x30]
+	exit_sequence x12
+L12:
+	add x11, x10, x11
+	add x11, x11, #0x8
+	ands xzr, x11, #0x1
+	mov x12, x0
+	b.eq #0x34, (L11)
+	movz x13, #0x17, lsl 0
+	str w13, [x12]
+	mov x13, sp
+	str x13, [x12, #0x38]
+	adr x13, #0x0
+	str x13, [x12, #0x30]
+	exit_sequence x12
+L11:
+	swpalh w3, w11, x11
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x14
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L10)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L10:
+	add x12, x10, x12
+	add x12, x12, #0x10
+	ands xzr, x12, #0x3
+	mov x13, x0
+	b.eq #0x34, (L9)
+	movz x14, #0x17, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L9:
+	swpal w4, w2, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x19
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L8)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L8:
+	add x12, x10, x12
+	add x12, x12, #0x18
+	swpalb w5, w3, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x22
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L7)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L7:
+	add x12, x10, x12
+	add x12, x12, #0x20
+	ands xzr, x12, #0x1
+	mov x13, x0
+	b.eq #0x34, (L6)
+	movz x14, #0x17, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L6:
+	swpalh w6, w4, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x2c
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L5)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L5:
+	add x12, x10, x12
+	add x12, x12, #0x28
+	ands xzr, x12, #0x3
+	mov x13, x0
+	b.eq #0x34, (L4)
+	movz x14, #0x17, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L4:
+	swpal w7, w5, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x38
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L3)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L3:
+	add x10, x10, x12
+	add x10, x10, #0x30
+	ands xzr, x10, #0x7
+	b.eq #0x34, (L2)
+	movz x12, #0x17, lsl 0
+	str w12, [x0]
+	mov x12, sp
+	str x12, [x0, #0x38]
+	adr x12, #0x0
+	str x12, [x0, #0x30]
+	exit_sequence x0
+L2:
+	swpal x8, x6, x10
+	mov x1, x11
+	mov x0, x9
+	add sp, sp, #0x10
+	ldr x30, [sp], #0x10
+	add sp, sp, #0x10
+	ret
+`,
+		},
+		{
 			name: "AtomicCas",
 			m:    testcases.AtomicCas.Module,
 			afterFinalizeARM64: `
@@ -2496,6 +2701,398 @@ L2:
 	ldr x19, [sp], #0x10
 	ldr x30, [sp], #0x10
 	add sp, sp, #0x40
+	ret
+`,
+		},
+		{
+			name: "AtomicStoreLoad",
+			m:    testcases.AtomicStoreLoad.Module,
+			afterFinalizeARM64: `
+L1 (SSA Block: blk0):
+	orr x27, xzr, #0x10
+	sub sp, sp, x27
+	stp x30, x27, [sp, #-0x10]!
+	str xzr, [sp, #-0x10]!
+	ldr x8, [sp, #0x20]
+	mov x9, xzr
+	uxtw x9, w9
+	add x10, x1, #0x10
+	ldar x10, x10
+	add x11, x9, #0x1
+	subs xzr, x10, x11
+	mov x10, x0
+	b.hs #0x34, (L25)
+	movz x11, #0x4, lsl 0
+	str w11, [x10]
+	mov x11, sp
+	str x11, [x10, #0x38]
+	adr x11, #0x0
+	str x11, [x10, #0x30]
+	exit_sequence x10
+L25:
+	ldr x10, [x1, #0x8]
+	add x9, x10, x9
+	stlrb w2, x9
+	mov x9, xzr
+	uxtw x9, w9
+	add x11, x1, #0x10
+	ldar x11, x11
+	add x12, x9, #0x1
+	subs xzr, x11, x12
+	mov x11, x0
+	b.hs #0x34, (L24)
+	movz x12, #0x4, lsl 0
+	str w12, [x11]
+	mov x12, sp
+	str x12, [x11, #0x38]
+	adr x12, #0x0
+	str x12, [x11, #0x30]
+	exit_sequence x11
+L24:
+	add x9, x10, x9
+	ldarb w9, x9
+	mov x11, xzr
+	uxtw x11, w11
+	add x12, x1, #0x10
+	ldar x12, x12
+	add x13, x11, #0xa
+	subs xzr, x12, x13
+	mov x12, x0
+	b.hs #0x34, (L23)
+	movz x13, #0x4, lsl 0
+	str w13, [x12]
+	mov x13, sp
+	str x13, [x12, #0x38]
+	adr x13, #0x0
+	str x13, [x12, #0x30]
+	exit_sequence x12
+L23:
+	add x11, x10, x11
+	add x11, x11, #0x8
+	ands xzr, x11, #0x1
+	mov x12, x0
+	b.eq #0x34, (L22)
+	movz x13, #0x17, lsl 0
+	str w13, [x12]
+	mov x13, sp
+	str x13, [x12, #0x38]
+	adr x13, #0x0
+	str x13, [x12, #0x30]
+	exit_sequence x12
+L22:
+	stlrh w3, x11
+	mov x11, xzr
+	uxtw x11, w11
+	add x12, x1, #0x10
+	ldar x12, x12
+	add x13, x11, #0xa
+	subs xzr, x12, x13
+	mov x12, x0
+	b.hs #0x34, (L21)
+	movz x13, #0x4, lsl 0
+	str w13, [x12]
+	mov x13, sp
+	str x13, [x12, #0x38]
+	adr x13, #0x0
+	str x13, [x12, #0x30]
+	exit_sequence x12
+L21:
+	add x11, x10, x11
+	add x11, x11, #0x8
+	ands xzr, x11, #0x1
+	mov x12, x0
+	b.eq #0x34, (L20)
+	movz x13, #0x17, lsl 0
+	str w13, [x12]
+	mov x13, sp
+	str x13, [x12, #0x38]
+	adr x13, #0x0
+	str x13, [x12, #0x30]
+	exit_sequence x12
+L20:
+	ldarh w11, x11
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x14
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L19)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L19:
+	add x12, x10, x12
+	add x12, x12, #0x10
+	ands xzr, x12, #0x3
+	mov x13, x0
+	b.eq #0x34, (L18)
+	movz x14, #0x17, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L18:
+	stlr w4, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x14
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L17)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L17:
+	add x12, x10, x12
+	add x12, x12, #0x10
+	ands xzr, x12, #0x3
+	mov x13, x0
+	b.eq #0x34, (L16)
+	movz x14, #0x17, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L16:
+	ldar w2, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x19
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L15)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L15:
+	add x12, x10, x12
+	add x12, x12, #0x18
+	stlrb w5, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x19
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L14)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L14:
+	add x12, x10, x12
+	add x12, x12, #0x18
+	ldarb w3, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x22
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L13)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L13:
+	add x12, x10, x12
+	add x12, x12, #0x20
+	ands xzr, x12, #0x1
+	mov x13, x0
+	b.eq #0x34, (L12)
+	movz x14, #0x17, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L12:
+	stlrh w6, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x22
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L11)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L11:
+	add x12, x10, x12
+	add x12, x12, #0x20
+	ands xzr, x12, #0x1
+	mov x13, x0
+	b.eq #0x34, (L10)
+	movz x14, #0x17, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L10:
+	ldarh w4, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x2c
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L9)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L9:
+	add x12, x10, x12
+	add x12, x12, #0x28
+	ands xzr, x12, #0x3
+	mov x13, x0
+	b.eq #0x34, (L8)
+	movz x14, #0x17, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L8:
+	stlr w7, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x2c
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L7)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L7:
+	add x12, x10, x12
+	add x12, x12, #0x28
+	ands xzr, x12, #0x3
+	mov x13, x0
+	b.eq #0x34, (L6)
+	movz x14, #0x17, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L6:
+	ldar w5, x12
+	mov x12, xzr
+	uxtw x12, w12
+	add x13, x1, #0x10
+	ldar x13, x13
+	add x14, x12, #0x38
+	subs xzr, x13, x14
+	mov x13, x0
+	b.hs #0x34, (L5)
+	movz x14, #0x4, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L5:
+	add x12, x10, x12
+	add x12, x12, #0x30
+	ands xzr, x12, #0x7
+	mov x13, x0
+	b.eq #0x34, (L4)
+	movz x14, #0x17, lsl 0
+	str w14, [x13]
+	mov x14, sp
+	str x14, [x13, #0x38]
+	adr x14, #0x0
+	str x14, [x13, #0x30]
+	exit_sequence x13
+L4:
+	stlr x8, x12
+	mov x8, xzr
+	uxtw x8, w8
+	add x12, x1, #0x10
+	ldar x12, x12
+	add x13, x8, #0x38
+	subs xzr, x12, x13
+	mov x12, x0
+	b.hs #0x34, (L3)
+	movz x13, #0x4, lsl 0
+	str w13, [x12]
+	mov x13, sp
+	str x13, [x12, #0x38]
+	adr x13, #0x0
+	str x13, [x12, #0x30]
+	exit_sequence x12
+L3:
+	add x8, x10, x8
+	add x8, x8, #0x30
+	ands xzr, x8, #0x7
+	b.eq #0x34, (L2)
+	movz x10, #0x17, lsl 0
+	str w10, [x0]
+	mov x10, sp
+	str x10, [x0, #0x38]
+	adr x10, #0x0
+	str x10, [x0, #0x30]
+	exit_sequence x0
+L2:
+	ldar x6, x8
+	mov x1, x11
+	mov x0, x9
+	add sp, sp, #0x10
+	ldr x30, [sp], #0x10
+	add sp, sp, #0x10
 	ret
 `,
 		},
