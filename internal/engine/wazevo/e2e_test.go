@@ -843,7 +843,7 @@ func TestE2E(t *testing.T) {
 				{params: []uint64{1, 2, 3, 4, 5, 6, 7}, expResults: []uint64{1, 2, 3, 4, 5, 6, 7}},
 				{params: []uint64{10, 20, 30, 40, 50, 60, 70}, expResults: []uint64{10, 20, 30, 40, 50, 60, 70}},
 				{
-					params:     []uint64{0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFD, 0xFFFFFFFFFFFFFFFC, 0xFFFFFFFFFFFFFFFB, 0xFFFFFFFFFFFFFFFA, 0xFFFFFFFFFFFFFFEF},
+					params:     []uint64{0xFFFFFFFF, 0xFFFFFFFE, 0xFFFFFFFD, 0xFFFFFFFFFFFFFFFC, 0xFFFFFFFFFFFFFFFB, 0xFFFFFFFFFFFFFFFA, 0xFFFFFFFFFFFFFFEF},
 					expResults: []uint64{0xFF, 0xFFFE, 0xFFFFFFFD, 0xFC, 0xFFFB, 0xFFFFFFFA, 0xFFFFFFFFFFFFFFEF},
 				},
 			},
