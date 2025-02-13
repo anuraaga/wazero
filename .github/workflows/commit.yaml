@@ -71,7 +71,7 @@ jobs:
         - os: macos-14
           arch: arm64
         go-version:
-          - "1.23"  # Current Go version
+          - "1.24"  # Current Go version
           - "1.21"  # Floor Go version of wazero (current - 2)
 
     steps:
